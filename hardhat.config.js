@@ -2,12 +2,13 @@ require('@nomiclabs/hardhat-ethers');
 require('@nomiclabs/hardhat-truffle5');
 require('@nomiclabs/hardhat-solhint');
 require('@openzeppelin/hardhat-upgrades');
+require("@nomiclabs/hardhat-etherscan");
 require('solidity-coverage');
 require('dotenv').config();
 
 module.exports = {
   solidity: {
-		version: '0.8.1',
+		version: '0.8.3',
 		settings: {
 			optimizer: {
 				enabled: true,
@@ -18,17 +19,25 @@ module.exports = {
   networks: {},
 };
 
-if ([ 'INFURA_URL', 'NIFTEX_PRIVATE_KEY' ].every(key => key in process.env)) {
-  // Replace this private key with your Ropsten account private key
-  // To export your private key from Metamask, open Metamask and
-  // go to Account Details > Export Private Key
-  // Be aware of NEVER putting real Ether into testing accounts
-  module.exports.networks.rinkeby = {
-    url: process.env.INFURA_URL,
-    accounts: [
-      process.env.NIFTEX_PRIVATE_KEY.startsWith('0x')
-        ? process.env.NIFTEX_PRIVATE_KEY
-        : '0x' + process.env.NIFTEX_PRIVATE_KEY,
-    ],
-  }
+module.exports.networks.rinkeby = {
+  url: process.env.RINKEBY_INFURA_URL,
+  accounts: [
+    process.env.RINKEBY_PRIVATE_KEY.startsWith('0x')
+      ? process.env.RINKEBY_PRIVATE_KEY
+      : '0x' + process.env.RINKEBY_PRIVATE_KEY,
+  ],
+}
+
+module.exports.networks.mainnet = {
+  url: process.env.MAINNET_INFURA_URL,
+  accounts: [
+    process.env.MAINNET_PRIVATE_KEY.startsWith('0x')
+      ? process.env.MAINNET_PRIVATE_KEY
+      : '0x' + process.env.MAINNET_PRIVATE_KEY,
+  ],
+  timeout: 60*1000*10,
+}
+
+module.exports.etherscan = {
+  apiKey: process.env.ETHERSCAN_API_KEY,
 }

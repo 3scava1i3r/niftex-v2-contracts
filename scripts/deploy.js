@@ -15,11 +15,19 @@ async function main() {
   const bondingcurve = await BondingCurve.deploy();
   console.log(`BondingCurve address: ${bondingcurve.address}`);
 
+  // Deploy BatchTransferHelper
+  const BatchTransferHelper = await ethers.getContractFactory("BatchTransferHelper");
+  const batchTransferHelper = await BatchTransferHelper.deploy();
+  console.log(`BatchTransferHelper address: ${batchTransferHelper.address}`);
+
   // Deploy Governance
   const Governance = await ethers.getContractFactory("Governance");
   const governance = await upgrades.deployProxy(Governance);
   await governance.deployed();
   console.log(`Governance address: ${governance.address}`);
+
+  console.log(`Transfer ownership of the upgradeable governance top ${process.env.MULTISIG_ADDRESS}`);
+  await upgrades.admin.transferProxyAdminOwnership(process.env.MULTISIG_ADDRESS);
 
   // Deploy and whitelist modules
   console.log("Deploying modules:");
@@ -63,17 +71,17 @@ async function main() {
   // Set config
   console.log("Configuring governance");
   for ([ key, value ] of Object.entries({
-    [ await modules.action.ACTION_AUTH_RATIO()    ]: ethers.utils.parseEther('0.03'),
-    [ await modules.buyout.BUYOUT_AUTH_RATIO()    ]: ethers.utils.parseEther('0.01'),
-    [ await modules.action.ACTION_DURATION()      ]: 432000,
-    [ await modules.buyout.BUYOUT_DURATION()      ]: 432000,
-    [ await modules.crowdsale.CURVE_TEMPLATE()    ]: bondingcurve.address,
-    [ await modules.crowdsale.PCT_SHARDS_NIFTEX() ]: ethers.utils.parseEther('0.01'),
-    [ await modules.crowdsale.PCT_ETH_TO_CURVE()  ]: ethers.utils.parseEther('0.25'),
-    [ await bondingcurve.PCT_FEE_NIFTEX()         ]: ethers.utils.parseEther('0'),
-    [ await bondingcurve.PCT_FEE_ARTIST()         ]: ethers.utils.parseEther('0.001'),
-    [ await bondingcurve.PCT_FEE_SUPPLIERS()      ]: ethers.utils.parseEther('0.003'),
-    [ await bondingcurve.LIQUIDITY_TIMELOCK()     ]: 2592000,
+    [ await modules.action.ACTION_AUTH_RATIO()            ]: ethers.utils.parseEther('0.03'),
+    [ await modules.buyout.BUYOUT_AUTH_RATIO()            ]: ethers.utils.parseEther('0.01'),
+    [ await modules.action.ACTION_DURATION()              ]: 432000,
+    [ await modules.buyout.BUYOUT_DURATION()              ]: 432000,
+    [ await modules.crowdsale.CURVE_TEMPLATE()            ]: bondingcurve.address,
+    [ await modules.basicdistribution.PCT_SHARDS_NIFTEX() ]: ethers.utils.parseEther('0.01'),
+    [ await modules.crowdsale.PCT_ETH_TO_CURVE()          ]: ethers.utils.parseEther('0.20'),
+    [ await bondingcurve.PCT_FEE_NIFTEX()                 ]: ethers.utils.parseEther('0'),
+    [ await bondingcurve.PCT_FEE_ARTIST()                 ]: ethers.utils.parseEther('0.001'),
+    [ await bondingcurve.PCT_FEE_SUPPLIERS()              ]: ethers.utils.parseEther('0.003'),
+    [ await bondingcurve.LIQUIDITY_TIMELOCK()             ]: 2592000,
   }))
   {
     console.log(` - ${key}: ${value}`)
@@ -83,25 +91,25 @@ async function main() {
   console.log("setting global only keys");
 
   for ([ key, value ] of Object.entries({
-    [ await shardedwallet.ALLOW_GOVERNANCE_UPGRADE() ]: true,
-    [ await modules.crowdsale.PCT_SHARDS_NIFTEX()    ]: true,
-    [ await bondingcurve.PCT_FEE_NIFTEX()            ]: true,
+    [ await shardedwallet.ALLOW_GOVERNANCE_UPGRADE()      ]: true,
+    [ await modules.basicdistribution.PCT_SHARDS_NIFTEX() ]: true,
+    [ await bondingcurve.PCT_FEE_NIFTEX()                 ]: true,
   }))
   {
     console.log(` - ${key}: ${value}`)
     await governance.setGlobalKey(key, value);
   }
 
-	const DEFAULT_ADMIN_ROLE = await governance.DEFAULT_ADMIN_ROLE();
+  const DEFAULT_ADMIN_ROLE = await governance.DEFAULT_ADMIN_ROLE();
 
   console.log(`Granting ${DEFAULT_ADMIN_ROLE} role to ${process.env.MULTISIG_ADDRESS}`);
-	await governance.grantRole(
-		DEFAULT_ADMIN_ROLE,
-		process.env.MULTISIG_ADDRESS
-	);
+  await governance.grantRole(
+    DEFAULT_ADMIN_ROLE,
+    process.env.MULTISIG_ADDRESS
+  );
 
   // need to wait 30 seconds before revoke
-  console.log('Waiting for 5 seconds before renouncing role');
+  console.log('Waiting for 30 seconds before renouncing role');
   await new Promise((resolve, reject) => {
     setTimeout(() => {
       resolve(true);
@@ -109,10 +117,10 @@ async function main() {
   });
 
   console.log(`Renounce ${DEFAULT_ADMIN_ROLE} role to ${deployer.address}`);
-	await governance.renounceRole(
-		DEFAULT_ADMIN_ROLE,
-		deployer.address
-	);
+  await governance.renounceRole(
+    DEFAULT_ADMIN_ROLE,
+    deployer.address
+  );
 }
 
 main()
